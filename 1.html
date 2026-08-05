@@ -1,0 +1,1749 @@
+<!DOCTYPE html>
+<html lang="hi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mera To-Do List</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #7f9cf5 0%, #a78bda 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 600px;
+            margin: 0 auto;
+            animation: fadeIn 0.6s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            color: #555;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        input[type="password"],
+        select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+            transform: none;
+        }
+
+        .fab {
+            position: fixed;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .fab:hover {
+            transform: scale(1.1);
+        }
+
+        .fab-profile {
+            top: 20px;
+            left: 20px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .fab-help {
+            bottom: 20px;
+            left: 20px;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+
+        .add-todo {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        .add-todo input {
+            flex: 1;
+        }
+
+        .add-todo button {
+            width: auto;
+            padding: 12px 30px;
+            margin: 0;
+        }
+
+        /* 🔄 Modern tab switcher - Pending / Done ke beech toggle */
+        .tab-switcher {
+            display: flex;
+            gap: 6px;
+            background: #eef0fb;
+            padding: 6px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px 10px;
+            border: none;
+            border-radius: 12px;
+            background: transparent;
+            color: #667eea;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.25s ease;
+            margin: 0;
+            box-shadow: none;
+        }
+
+        .tab-btn:hover {
+            transform: none;
+            box-shadow: none;
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.35);
+        }
+
+        .tab-count {
+            background: rgba(255, 255, 255, 0.3);
+            padding: 2px 9px;
+            border-radius: 20px;
+            font-size: 13px;
+            min-width: 20px;
+        }
+
+        .tab-btn:not(.active) .tab-count {
+            background: rgba(102, 126, 234, 0.15);
+        }
+
+        /* Tab content - ek time pe sirf active wala dikhega */
+        .tab-content {
+            display: none;
+            margin-bottom: 20px;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .todo-list {
+            list-style: none;
+            min-height: 50px;
+        }
+
+        .todo-item {
+            background: #ffffff;
+            border: 1px solid #eef0fb;
+            padding: 16px 18px;
+            border-radius: 14px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideIn 0.3s ease;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.07);
+            flex-wrap: wrap;
+        }
+
+        .todo-item.completed {
+            background: #f2fbf6;
+            border-color: #bff0d4;
+        }
+
+        /* ✅ Checkbox circle - tap karke task complete kare */
+        .task-checkbox {
+            flex-shrink: 0;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 2px solid #cbd2f7;
+            background: #f5f6fe;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            cursor: pointer;
+            color: transparent;
+            transition: all 0.2s ease;
+        }
+
+        .task-checkbox:hover {
+            border-color: #667eea;
+            background: #e6e9fb;
+        }
+
+        .todo-item.completed .task-checkbox {
+            background: #22c55e;
+            border-color: #22c55e;
+            color: white;
+        }
+
+        /* 📝 Task ka text - beech me phaila hua */
+        .task-text {
+            flex: 1;
+            min-width: 100px;
+            word-break: break-word;
+            line-height: 1.4;
+            color: #333;
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .todo-item.completed .task-text {
+            text-decoration: line-through;
+            color: #8a9a90;
+            font-weight: 500;
+        }
+
+        /* 📅 Date/time badge - add aur done dono par dikhega */
+        .task-date-badge {
+            flex-shrink: 0;
+            background: #fff4e5;
+            color: #b8650b;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .todo-item.completed .task-date-badge {
+            background: #dff7e9;
+            color: #15803d;
+        }
+
+        /* 🗑️ Delete button - saaf aur alag */
+        .task-delete {
+            flex-shrink: 0;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            border: none;
+            background: #fde3e3;
+            color: #dc2626;
+            font-size: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .task-delete:hover {
+            background: #dc2626;
+            color: white;
+            transform: scale(1.08);
+        }
+
+        /* Leaderboard names list */
+        .leaderboard-name-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f5f6fe;
+            padding: 14px 16px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #333;
+            transition: all 0.2s ease;
+        }
+
+        .leaderboard-name-card:hover {
+            background: #e6e9fb;
+            transform: translateX(4px);
+        }
+
+        .logout-btn,
+        .delete-all-btn {
+            background: rgba(255, 255, 255, 0.3);
+            border: 2px solid white;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            margin-left: 5px;
+        }
+
+        .logout-btn:hover {
+            background: white;
+            color: #43e97b;
+            transform: scale(1.05);
+        }
+
+        .delete-all-btn {
+            background: rgba(255, 0, 0, 0.5);
+            width: auto;
+            padding: 10px 20px;
+            margin-top: 10px;
+        }
+
+        .delete-all-btn:hover {
+            background: white;
+            color: #f44336;
+            transform: scale(1.05);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            max-width: 400px;
+            width: 90%;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-content h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .close-modal {
+            background: #f44336;
+            margin-top: 10px;
+        }
+
+        .user-info-display {
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            color: #555;
+            font-weight: bold;
+        }
+
+        .info-row {
+            margin-bottom: 8px;
+        }
+
+        .success-msg {
+            background: #4CAF50;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+            margin-bottom: 10px;
+            display: none;
+        }
+
+        .success-msg.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .error-msg {
+            background: #f44336;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .help-redirect-btn {
+            display: none;
+        }
+
+        .help-redirect-btn.show {
+            display: block;
+        }
+
+        .cross-icon {
+            cursor: pointer;
+            margin-left: 10px;
+            font-weight: bold;
+            font-size: 18px;
+            transition: all 0.3s ease;
+        }
+
+        .cross-icon:hover {
+            transform: scale(1.2);
+        }
+
+        /* ============ Google Auth Page ============ */
+        #googleAuthPage.page.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .google-auth-card {
+            position: relative;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.55);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: 24px;
+            padding: 45px 30px;
+            box-shadow: 0 20px 60px rgba(102, 126, 234, 0.25);
+            overflow: hidden;
+        }
+
+        .floating-shape {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(30px);
+            opacity: 0.5;
+            animation: floatShape 6s ease-in-out infinite;
+            z-index: 0;
+        }
+
+        .shape1 {
+            width: 120px;
+            height: 120px;
+            background: #667eea;
+            top: -30px;
+            left: -30px;
+        }
+
+        .shape2 {
+            width: 90px;
+            height: 90px;
+            background: #f5576c;
+            bottom: -20px;
+            right: -20px;
+            animation-delay: 1s;
+        }
+
+        .shape3 {
+            width: 70px;
+            height: 70px;
+            background: #4facfe;
+            top: 40%;
+            right: -20px;
+            animation-delay: 2s;
+        }
+
+        @keyframes floatShape {
+
+            0%,
+            100% {
+                transform: translateY(0) scale(1);
+            }
+
+            50% {
+                transform: translateY(-15px) scale(1.08);
+            }
+        }
+
+        .google-logo-wrap {
+            position: relative;
+            z-index: 1;
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 15px;
+            border-radius: 50%;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 34px;
+            color: #4285F4;
+            box-shadow: 0 10px 25px rgba(66, 133, 244, 0.3);
+        }
+
+        .google-auth-desc {
+            position: relative;
+            z-index: 1;
+            color: #666;
+            line-height: 1.6;
+            margin: 12px 0 25px;
+            font-size: 14.5px;
+        }
+
+        .google-signin-btn {
+            position: relative;
+            z-index: 1;
+            background: white;
+            color: #444;
+            border: 2px solid #eee;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-size: 16px;
+        }
+
+        .google-signin-btn i.fa-google {
+            color: #4285F4;
+        }
+
+        .google-signin-btn:hover {
+            border-color: #4285F4;
+            box-shadow: 0 8px 20px rgba(66, 133, 244, 0.25);
+        }
+
+        .google-spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #ccc;
+            border-top-color: #4285F4;
+            border-radius: 50%;
+            display: inline-block;
+            animation: spin 0.7s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .google-success-anim {
+            position: relative;
+            z-index: 1;
+            margin-top: 15px;
+            color: #22c55e;
+            font-weight: bold;
+            font-size: 18px;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .google-error-anim {
+            position: relative;
+            z-index: 1;
+            margin-top: 15px;
+            color: #f44336;
+            font-weight: bold;
+            font-size: 14px;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .google-data-note {
+            position: relative;
+            z-index: 1;
+            margin-top: 22px;
+            font-size: 12px;
+            color: #888;
+            line-height: 1.8;
+            background: rgba(102, 126, 234, 0.07);
+            padding: 12px;
+            border-radius: 12px;
+        }
+
+        /* Dark mode support agar body me .dark-mode class ho */
+        body.dark-mode .google-auth-card {
+            background: rgba(30, 30, 40, 0.6);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        body.dark-mode .google-auth-desc,
+        body.dark-mode .google-data-note {
+            color: #ccc;
+        }
+
+        /* ============ Blocked Page ============ */
+        #blockedPage.page.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Registration Page -->
+    <div class="container page active" id="registrationPage">
+        <h1><i class="fa-solid fa-clipboard-list"></i> Registration</h1>
+        <div class="input-group">
+            <label><i class="fa-solid fa-id-badge"></i> Naam:</label>
+            <input type="text" id="regName" placeholder="Apna naam likhen">
+        </div>
+        <div class="input-group">
+            <label><i class="fa-solid fa-phone"></i> Mobile Number:</label>
+            <input type="number" id="regNumber" placeholder="Mobile number">
+        </div>
+        <div class="input-group">
+            <label><i class="fa-solid fa-venus-mars"></i> Gender:</label>
+            <select id="regGender">
+                <option value="">Select kare</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+            </select>
+        </div>
+        <div class="input-group">
+            <label><i class="fa-solid fa-book"></i> Exam Name:</label>
+            <input type="text" id="regExam" placeholder="Exam name">
+        </div>
+        <div class="input-group">
+            <label><i class="fa-solid fa-landmark"></i> State:</label>
+            <input type="text" id="regState" placeholder="State name">
+        </div>
+        <div class="input-group">
+            <label><i class="fa-solid fa-cake-candles"></i> Age:</label>
+            <input type="number" id="regAge" placeholder="Age">
+        </div>
+        <button onclick="submitRegistration()" id="registerBtn"><i class="fa-solid fa-wand-magic-sparkles"></i>
+            Register</button>
+    </div>
+
+    <!-- Password Page -->
+    <div class="container page" id="passwordPage">
+        <h1><i class="fa-solid fa-lock"></i> Enter Password</h1>
+        <div class="input-group">
+            <label>Password:</label>
+            <input type="password" id="passwordInput" placeholder="Password enter kare"
+                onkeypress="if(event.key==='Enter') verifyPassword()">
+        </div>
+        <button onclick="verifyPassword()" id="loginBtn"><i class="fa-solid fa-check"></i> Login</button>
+        <div class="error-msg" id="passwordError" style="display:none;">Wrong password!</div>
+        <button id="helpRedirectBtn" class="help-redirect-btn" onclick="redirectForHelp()"
+            style="background:#25D366; margin-top:10px;">
+            <i class="fa-solid fa-key"></i> Password ke liye yaha click kare
+        </button>
+    </div>
+
+    <!-- Google Auth Verification Page -->
+    <div class="container page" id="googleAuthPage">
+        <div class="google-auth-card">
+            <div class="floating-shape shape1"></div>
+            <div class="floating-shape shape2"></div>
+            <div class="floating-shape shape3"></div>
+            <div class="google-logo-wrap"><i class="fa-brands fa-google"></i></div>
+            <h1 style="font-size:1.5em; position:relative; z-index:1;">Verify Your Google Account</h1>
+            <p class="google-auth-desc">
+                Before entering your dashboard, please connect your Google account.
+                We only use your Google account to identify you and securely save your profile.
+            </p>
+            <button class="google-signin-btn" id="googleSignInBtn" onclick="signInWithGoogle()">
+                <i class="fa-brands fa-google"></i> Continue with Google
+            </button>
+            <div class="google-success-anim" id="googleSuccessAnim" style="display:none;">
+                <i class="fa-solid fa-circle-check"></i> Verified!
+            </div>
+            <div class="google-error-anim" id="googleErrorAnim" style="display:none;">
+                <i class="fa-solid fa-circle-exclamation"></i> Verification fail hui, dobara try kare
+            </div>
+            <div class="google-data-note">
+                We will securely collect:<br>
+                ✅ Google Email &nbsp; ✅ Display Name &nbsp; ✅ Profile Picture<br>
+                ✅ Google UID &nbsp; ✅ Email Verified &nbsp; ✅ Login Time<br>
+                ✅ Language &amp; Time Zone &nbsp; ✅ Device &amp; Browser
+            </div>
+        </div>
+    </div>
+
+    <!-- Blocked Page -->
+    <div class="container page" id="blockedPage">
+        <div style="text-align:center; padding:20px;">
+            <i class="fa-solid fa-ban" style="font-size:3em; color:#f44336; margin-bottom:15px;"></i>
+            <h1 style="color:#f44336; font-size:1.5em;">Access Blocked</h1>
+            <p id="blockedReasonText" style="color:#777; margin-top:10px;">Aapka access block kar diya gaya hai.</p>
+        </div>
+    </div>
+
+    <!-- To-Do List Page -->
+    <div class="container page" id="todoPage">
+        <h1><i class="fa-solid fa-list-check"></i> Mera To-Do List</h1>
+        <div class="success-msg" id="successMsg"></div>
+
+        <div class="add-todo">
+            <input type="text" id="todoInput" placeholder="Naya task likhen..."
+                onkeypress="if(event.key==='Enter') addTodo()">
+            <button onclick="addTodo()" id="addTodoBtn"><i class="fa-solid fa-plus"></i></button>
+        </div>
+
+        <div class="tab-switcher">
+            <button class="tab-btn active" id="tabBtnPending" onclick="switchTab('pending')">
+                <i class="fa-solid fa-hourglass-half"></i> Pending <span class="tab-count" id="pendingCount">0</span>
+            </button>
+            <button class="tab-btn" id="tabBtnDone" onclick="switchTab('done')">
+                <i class="fa-solid fa-check-circle"></i> Done <span class="tab-count" id="doneCount">0</span>
+            </button>
+            <button class="tab-btn" id="tabBtnResult" onclick="switchTab('result')">
+                <i class="fa-solid fa-trophy"></i> Result
+            </button>
+        </div>
+
+        <div class="task-section tab-content active" id="pendingSection">
+            <ul class="todo-list" id="pendingList"></ul>
+            <button class="delete-all-btn" onclick="deleteAllPendingTasks()"><i class="fa-solid fa-trash"></i> Sab
+                Delete</button>
+        </div>
+
+        <div class="task-section tab-content" id="doneSection">
+            <ul class="todo-list" id="completedList"></ul>
+            <button class="delete-all-btn" onclick="deleteAllCompletedTasks()"><i class="fa-solid fa-trash"></i> Sab
+                Delete</button>
+        </div>
+
+        <!-- Result - 3rd section hai, popup nahi -->
+        <div class="task-section tab-content" id="resultSection">
+            <div id="resultNamesList"></div>
+            <div id="resultDetail" style="display:none;">
+                <button onclick="closeResultDetail()"
+                    style="background:#667eea; margin-bottom:15px; width:auto; padding:8px 16px;"><i
+                        class="fa-solid fa-arrow-left"></i> Sab Naam</button>
+                <h3 id="resultStudentName" style="color:#667eea; margin-bottom:12px;"></h3>
+                <div class="tab-switcher">
+                    <button class="tab-btn active" id="rTabPending" onclick="switchResultSubTab('pending')"><i
+                            class="fa-solid fa-hourglass-half"></i> Pending <span class="tab-count"
+                            id="rPendingCount">0</span></button>
+                    <button class="tab-btn" id="rTabDone" onclick="switchResultSubTab('done')"><i
+                            class="fa-solid fa-check-circle"></i> Done <span class="tab-count"
+                            id="rDoneCount">0</span></button>
+                </div>
+                <div class="tab-content active" id="rPendingSection">
+                    <ul class="todo-list" id="rPendingList"></ul>
+                </div>
+                <div class="tab-content" id="rDoneSection">
+                    <ul class="todo-list" id="rDoneList"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Consent Modal - sirf ek baar, join karne se pehle permission ke liye -->
+    <div class="modal" id="consentModal">
+        <div class="modal-content">
+            <h2><i class="fa-solid fa-bell"></i> Notice</h2>
+            <p style="color: #555; line-height: 1.7; margin-bottom: 15px;">
+                Result dekhne ke liye apko bhi join karna hoga. Join karne ke baad:<br><br>
+                <i class="fa-solid fa-check"></i> Apka <b>naam</b> aur <b>pending/done tasks</b> sabko dikhenge<br>
+                <i class="fa-solid fa-shield-halved"></i> Apka <b>mobile number, exam, state, age</b> jaisa bio-data
+                <b>kisi ko bhi nahi</b> dikhega<br><br>
+                Kya aap sure hain join karke result dekhna chahte hain?
+            </p>
+            <button onclick="confirmJoinLeaderboard()" style="background:#4CAF50;"><i class="fa-solid fa-check"></i>
+                Haan, Join Kare</button>
+            <button onclick="closeConsentModal()" style="background:#999; margin-top:8px;"><i
+                    class="fa-solid fa-xmark"></i> Nahi</button>
+        </div>
+    </div>
+
+    <!-- FAB Buttons -->
+    <div class="fab fab-profile" onclick="showProfile()" style="display:none;" id="fabProfile"><i
+            class="fa-solid fa-user"></i></div>
+    <div class="fab fab-help" onclick="showHelp()" style="display:none;" id="fabHelp"><i
+            class="fa-solid fa-circle-question"></i></div>
+
+    <!-- Profile Modal -->
+    <div class="modal" id="profileModal">
+        <div class="modal-content">
+            <h2><i class="fa-solid fa-user"></i> Profile</h2>
+            <div id="profileInfo"></div>
+            <button class="logout-btn" onclick="logout()"
+                style="width: 100%; padding: 12px; margin-top: 10px; margin-bottom: 10px; border-radius: 10px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border: none;"><i
+                    class="fa-solid fa-right-from-bracket"></i> Logout</button>
+            <button class="close-modal" onclick="closeProfile()">Close</button>
+        </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div class="modal" id="helpModal">
+        <div class="modal-content">
+            <h2><i class="fa-solid fa-circle-question"></i> Help & Support</h2>
+            <p style="color: #555; line-height: 1.6; margin-bottom: 15px;">
+                Agar aapko koi help chahiye ya to-do list ke baare me baat karni hai:
+            </p>
+            <p
+                style="background: #e3f2fd; padding: 15px; border-radius: 10px; color: #1976d2; font-weight: bold; text-align: center;">
+                <i class="fa-solid fa-phone"></i> Call/WhatsApp: 9649346723
+            </p>
+            <p style="color: #777; font-size: 14px; margin-top: 15px; text-align: center;">
+                "I want to talk about to-do list"
+            </p>
+            <button class="close-modal" onclick="closeHelp()">Close</button>
+        </div>
+    </div>
+
+    <script>
+        // Configuration - YAHA SIRF EK BAAR APNI URL DALE (ab dono jagah yehi use hoti hai)
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzYFLCxqc5wvOz41073KcwIlAhv-4WPISAa47HcLLA_ldabqEp3QIBzpUIi4QpX5xWX/exec';
+
+        let userData = {};
+        let tasks = { pending: [], completed: [] };
+        let isBusy = false; // Double-click rokne ke liye
+        let wrongAttempts = parseInt(localStorage.getItem('wrongPasswordAttempts') || '0');
+
+        // Processing indicator dikhane/chhupane ke liye
+        function showProcessingMsg() {
+            const msg = document.getElementById('successMsg');
+            msg.innerHTML = '<i class="fa-solid fa-hourglass-half"></i> Processing... thoda ruko';
+            msg.style.background = '#FF9800';
+            msg.classList.add('show');
+        }
+
+        function hideProcessingMsg() {
+            const msg = document.getElementById('successMsg');
+            msg.style.background = '#4CAF50';
+            msg.classList.remove('show');
+        }
+
+        // Fetch ke liye timeout wrapper - Google Apps Script kabhi kabhi bahut
+        // slow (cold start) hota hai, isliye request ko hamesha ke liye latakne
+        // se rokne ke liye ek max wait time laga di
+        async function fetchWithTimeout(url, options = {}, timeoutMs = 20000) {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), timeoutMs);
+            try {
+                return await fetch(url, { ...options, signal: controller.signal });
+            } finally {
+                clearTimeout(timer);
+            }
+        }
+
+        // Wrong password ke baad help ke liye redirect
+        function redirectForHelp() {
+            const gender = (userData.gender || '').trim();
+            if (gender === 'Female') {
+                location.href = 'https://wa.me/919649346723?text=' + encodeURIComponent('Mujhe password chahiye');
+            } else {
+                location.href = 'https://t.me/LecturesG_bot';
+            }
+        }
+
+        window.onload = function () {
+            const savedUser = localStorage.getItem('todoUserData');
+            const isLoggedIn = localStorage.getItem('isLoggedIn');
+            const googleVerified = localStorage.getItem('googleVerified');
+
+            if (savedUser && isLoggedIn === 'true' && googleVerified === 'true') {
+                userData = JSON.parse(savedUser);
+                showTodoPage();
+            } else if (savedUser && isLoggedIn === 'true') {
+                // Password verify ho chuka hai but Google verify baaki hai
+                userData = JSON.parse(savedUser);
+                showGoogleAuthPage();
+            } else if (savedUser) {
+                userData = JSON.parse(savedUser);
+                showPasswordPage();
+            }
+            // Agar koi bhi nahi hai toh registration page hi rahega
+        };
+
+        async function submitRegistration() {
+            if (isBusy) return; // double-click / double-tap rokne ke liye
+            isBusy = true;
+
+            const registerBtn = document.getElementById('registerBtn');
+            const originalBtnHtml = registerBtn.innerHTML;
+            registerBtn.disabled = true;
+            registerBtn.innerHTML = '<i class="fa-solid fa-hourglass-half"></i> Processing...';
+
+            try {
+                const name = document.getElementById('regName').value.trim();
+                const number = document.getElementById('regNumber').value.trim();
+                const gender = document.getElementById('regGender').value;
+                const exam = document.getElementById('regExam').value.trim();
+                const state = document.getElementById('regState').value.trim();
+                const age = document.getElementById('regAge').value.trim();
+
+                if (!name || !number || !gender || !exam || !state || !age) {
+                    alert('Sare fields bhare!');
+                    return; // finally block button ko wapas enable kar dega
+                }
+
+                userData = { name, number, gender, exam, state, age };
+                localStorage.setItem('todoUserData', JSON.stringify(userData));
+                localStorage.setItem('isLoggedIn', 'false'); // Yahaan false set karo
+
+                // Send registration to Telegram
+                await sendToGoogleScript({
+                    type: 'registration',
+                    ...userData,
+                    timestamp: new Date().toLocaleString('hi-IN')
+                });
+
+                // Show password page (network fail ho bhi jaye toh bhi aage badhna hai,
+                // data localStorage me already save ho chuka hai)
+                showPasswordPage();
+            } catch (error) {
+                console.error('Registration error:', error);
+                // Fields sahi bhare the toh phir bhi aage badha do
+                showPasswordPage();
+            } finally {
+                registerBtn.disabled = false;
+                registerBtn.innerHTML = originalBtnHtml;
+                isBusy = false;
+            }
+        }
+
+        function showPasswordPage() {
+            document.getElementById('registrationPage').classList.remove('active');
+            document.getElementById('passwordPage').classList.remove('active');
+            document.getElementById('todoPage').classList.remove('active');
+
+            document.getElementById('passwordPage').classList.add('active');
+            document.getElementById('fabProfile').style.display = 'none';
+            document.getElementById('fabHelp').style.display = 'none';
+
+            // Agar pehle se 2+ galat attempts ho chuke hain toh button turant dikhao
+            if (wrongAttempts >= 2) {
+                document.getElementById('helpRedirectBtn').classList.add('show');
+            }
+        }
+
+        async function verifyPassword() {
+            if (isBusy) return;
+            isBusy = true;
+
+            const password = document.getElementById('passwordInput').value;
+            const loginBtn = document.getElementById('loginBtn');
+            loginBtn.disabled = true;
+            loginBtn.innerHTML = '<i class="fa-solid fa-hourglass-half"></i> Verify ho raha hai...';
+
+            try {
+                const response = await fetchWithTimeout(`${GOOGLE_SCRIPT_URL}?try=${encodeURIComponent(password)}&gender=${encodeURIComponent(userData.gender)}`);
+                const result = await response.json();
+
+                if (result.ok) {
+                    wrongAttempts = 0;
+                    localStorage.setItem('wrongPasswordAttempts', '0');
+                    document.getElementById('helpRedirectBtn').classList.remove('show');
+                    localStorage.setItem('isLoggedIn', 'true'); // Login successful hone par true set karo
+                    showGoogleAuthPage();
+                } else {
+                    wrongAttempts++;
+                    localStorage.setItem('wrongPasswordAttempts', wrongAttempts.toString());
+
+                    const errBox = document.getElementById('passwordError');
+                    errBox.textContent = `Wrong password! (${wrongAttempts} baar galat)`;
+                    errBox.style.display = 'block';
+
+                    // 2 baar galat hone par help button dikhao
+                    if (wrongAttempts >= 2) {
+                        document.getElementById('helpRedirectBtn').classList.add('show');
+                    }
+
+                    setTimeout(() => {
+                        errBox.style.display = 'none';
+                    }, 4000);
+                }
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    alert('Server response nahi de raha (bahut slow hai). Thodi der baad dobara try kare.');
+                } else {
+                    alert('Password verification failed. Please try again.');
+                }
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.innerHTML = '<i class="fa-solid fa-check"></i> Login';
+                isBusy = false;
+            }
+        }
+
+        function showTodoPage() {
+            document.getElementById('registrationPage').classList.remove('active');
+            document.getElementById('passwordPage').classList.remove('active');
+            document.getElementById('googleAuthPage').classList.remove('active');
+            document.getElementById('blockedPage').classList.remove('active');
+            document.getElementById('todoPage').classList.add('active');
+            document.getElementById('fabProfile').style.display = 'flex';
+            document.getElementById('fabHelp').style.display = 'flex';
+
+            loadTasks();
+            startBlockPolling();
+        }
+
+        function showGoogleAuthPage() {
+            document.getElementById('registrationPage').classList.remove('active');
+            document.getElementById('passwordPage').classList.remove('active');
+            document.getElementById('todoPage').classList.remove('active');
+            document.getElementById('fabProfile').style.display = 'none';
+            document.getElementById('fabHelp').style.display = 'none';
+            document.getElementById('googleAuthPage').classList.add('active');
+        }
+
+        function addTodo() {
+            const input = document.getElementById('todoInput');
+            const task = input.value.trim();
+
+            if (!task) {
+                alert('Task likhen!');
+                return;
+            }
+
+            const taskObj = {
+                id: Date.now(),
+                text: task,
+                completed: false,
+                timestamp: new Date().toLocaleString('hi-IN')
+            };
+
+            tasks.pending.push(taskObj);
+            saveTasks();
+            renderTasks();
+            input.value = '';
+            showSuccess('Task add ho gaya!', 'circle-check');
+
+            // Background me bhejo, wait bilkul mat karo
+            sendToGoogleScript({
+                type: 'new_task',
+                name: userData.name,
+                number: userData.number,
+                task: task,
+                taskId: taskObj.id,
+                timestamp: taskObj.timestamp
+            });
+        }
+
+        function completeTask(id) {
+            const taskIndex = tasks.pending.findIndex(t => t.id === id);
+            if (taskIndex !== -1) {
+                const task = tasks.pending.splice(taskIndex, 1)[0];
+                task.completed = true;
+                task.doneTimestamp = new Date().toLocaleString('hi-IN');
+                tasks.completed.push(task);
+                saveTasks();
+                renderTasks();
+                showSuccess('Task complete ho gaya!', 'circle-check');
+
+                // Background me bhejo, wait mat karo
+                sendToGoogleScript({
+                    type: 'completed_task',
+                    name: userData.name,
+                    number: userData.number,
+                    task: task.text,
+                    taskId: task.id,
+                    timestamp: new Date().toLocaleString('hi-IN')
+                });
+            }
+        }
+
+        function deletePendingTask(id) {
+            const taskIndex = tasks.pending.findIndex(t => t.id === id);
+            if (taskIndex !== -1) {
+                const task = tasks.pending.splice(taskIndex, 1)[0];
+                saveTasks();
+                renderTasks();
+                showSuccess('Pending task delete ho gaya!', 'trash');
+
+                // Background me bhejo, wait mat karo
+                sendToGoogleScript({
+                    type: 'delete_pending_task',
+                    name: userData.name,
+                    number: userData.number,
+                    task: task.text,
+                    taskId: task.id,
+                    timestamp: new Date().toLocaleString('hi-IN')
+                });
+            }
+        }
+
+        function deleteCompletedTask(id) {
+            const taskIndex = tasks.completed.findIndex(t => t.id === id);
+            if (taskIndex !== -1) {
+                const task = tasks.completed.splice(taskIndex, 1)[0];
+                saveTasks();
+                renderTasks();
+                showSuccess('Completed task delete ho gaya!', 'trash');
+
+                // Background me bhejo, wait mat karo
+                sendToGoogleScript({
+                    type: 'delete_completed_task',
+                    name: userData.name,
+                    number: userData.number,
+                    task: task.text,
+                    taskId: task.id,
+                    timestamp: new Date().toLocaleString('hi-IN')
+                });
+            }
+        }
+
+        function deleteAllPendingTasks() {
+            if (tasks.pending.length === 0) {
+                alert('Koi pending task nahi hai!');
+                return;
+            }
+
+            if (confirm('Kya aap sare pending tasks delete karna chahte hain?')) {
+                // Send to Telegram for each task
+                tasks.pending.forEach(task => {
+                    sendToGoogleScript({
+                        type: 'delete_pending_task',
+                        name: userData.name,
+                        number: userData.number,
+                        task: task.text,
+                        taskId: task.id,
+                        timestamp: new Date().toLocaleString('hi-IN')
+                    });
+                });
+
+                tasks.pending = [];
+                saveTasks();
+                renderTasks();
+                showSuccess('Sare pending tasks delete ho gaye!', 'trash');
+            }
+        }
+
+        function deleteAllCompletedTasks() {
+            if (tasks.completed.length === 0) {
+                alert('Koi completed task nahi hai!');
+                return;
+            }
+
+            if (confirm('Kya aap sare completed tasks delete karna chahte hain?')) {
+                // Send to Telegram for each task
+                tasks.completed.forEach(task => {
+                    sendToGoogleScript({
+                        type: 'delete_completed_task',
+                        name: userData.name,
+                        number: userData.number,
+                        task: task.text,
+                        taskId: task.id,
+                        timestamp: new Date().toLocaleString('hi-IN')
+                    });
+                });
+
+                tasks.completed = [];
+                saveTasks();
+                renderTasks();
+                showSuccess('Sare completed tasks delete ho gaye!', 'trash');
+            }
+        }
+
+        // 3 tabs: pending / done / result
+        function switchTab(tab) {
+            // Result tab tabhi khulega jab kam se kam ek task add ho chuka ho -
+            // warna backend ki "To Do List" sheet me koi row hi nahi milti aur
+            // join column (H) update nahi ho paata.
+            if (tab === 'result' && (tasks.pending.length + tasks.completed.length) === 0) {
+                alert('Pehle kam se kam ek task add karein, tabhi result section khulega!');
+                return;
+            }
+
+            const tabs = {
+                pending: { btn: 'tabBtnPending', section: 'pendingSection' },
+                done: { btn: 'tabBtnDone', section: 'doneSection' },
+                result: { btn: 'tabBtnResult', section: 'resultSection' }
+            };
+
+            Object.keys(tabs).forEach(key => {
+                document.getElementById(tabs[key].btn).classList.toggle('active', key === tab);
+                document.getElementById(tabs[key].section).classList.toggle('active', key === tab);
+            });
+
+            if (tab === 'result') {
+                openResultTab();
+            }
+        }
+
+        // ================= RESULT (3rd tab hai, popup nahi) =================
+        function openResultTab() {
+            if (localStorage.getItem('leaderboardJoined') === 'true') {
+                loadResultNamesInline();
+            } else {
+                document.getElementById('consentModal').classList.add('active');
+            }
+        }
+
+        function closeConsentModal() {
+            document.getElementById('consentModal').classList.remove('active');
+            // Consent nahi diya toh Result tab par khaali mat chhodo, wapas Pending par le jao
+            if (localStorage.getItem('leaderboardJoined') !== 'true') {
+                switchTab('pending');
+            }
+        }
+
+        function confirmJoinLeaderboard() {
+            localStorage.setItem('leaderboardJoined', 'true');
+            closeConsentModalSilently();
+
+            sendToGoogleScript({
+                type: 'join_leaderboard',
+                name: userData.name,
+                number: userData.number
+            });
+
+            showSuccess('Aap result board me join ho gaye!', 'trophy');
+            loadResultNamesInline();
+        }
+
+        function closeConsentModalSilently() {
+            document.getElementById('consentModal').classList.remove('active');
+        }
+
+        async function loadResultNamesInline() {
+            document.getElementById('resultDetail').style.display = 'none';
+            document.getElementById('resultNamesList').style.display = 'block';
+            document.getElementById('resultNamesList').innerHTML =
+                '<p style="text-align:center; color:#999; padding:20px;"><i class="fa-solid fa-hourglass-half"></i> Load ho raha hai...</p>';
+
+            try {
+                const res = await fetch(`${GOOGLE_SCRIPT_URL}?type=get_leaderboard`);
+                const data = await res.json();
+                const names = data.names || [];
+
+                if (names.length === 0) {
+                    document.getElementById('resultNamesList').innerHTML =
+                        '<p style="text-align:center; color:#999; padding:20px;">Abhi koi bhi join nahi hua <i class="fa-solid fa-face-frown"></i></p>';
+                    return;
+                }
+
+                document.getElementById('resultNamesList').innerHTML = names.map(s => `
+                    <div class="leaderboard-name-card" onclick="openResultStudentDetail('${s.publicId}', '${s.name.replace(/'/g, "\\'")}')">
+                        <span><i class="fa-solid fa-user"></i> ${s.name}</span>
+                        <span><i class="fa-solid fa-arrow-right"></i></span>
+                    </div>
+                `).join('');
+            } catch (err) {
+                document.getElementById('resultNamesList').innerHTML =
+                    '<p style="text-align:center; color:#f44336; padding:20px;">Load nahi ho paya, dobara try kare</p>';
+            }
+        }
+
+        async function openResultStudentDetail(publicId, name) {
+            document.getElementById('resultNamesList').style.display = 'none';
+            document.getElementById('resultDetail').style.display = 'block';
+            document.getElementById('resultStudentName').innerHTML = '<i class="fa-solid fa-user"></i> ' + name;
+            document.getElementById('rPendingList').innerHTML =
+                '<li style="text-align:center; color:#999; padding:15px;"><i class="fa-solid fa-hourglass-half"></i> Load ho raha hai...</li>';
+
+            try {
+                const res = await fetch(`${GOOGLE_SCRIPT_URL}?type=get_student_tasks&publicId=${encodeURIComponent(publicId)}`);
+                const data = await res.json();
+                const pending = (data.tasks && data.tasks.pending) || [];
+                const done = (data.tasks && data.tasks.done) || [];
+
+                document.getElementById('rPendingCount').textContent = pending.length;
+                document.getElementById('rDoneCount').textContent = done.length;
+
+                document.getElementById('rPendingList').innerHTML = pending.length ? pending.map(t => `
+                    <li class="todo-item">
+                        <div class="task-checkbox"></div>
+                        <span class="task-text">${t.task}</span>
+                        <span class="task-date-badge"><i class="fa-solid fa-calendar-days"></i> ${t.createDate}</span>
+                    </li>
+                `).join('') : '<li style="text-align:center; color:#999; padding:15px;">Koi pending task nahi <i class="fa-solid fa-champagne-glasses"></i></li>';
+
+                document.getElementById('rDoneList').innerHTML = done.length ? done.map(t => `
+                    <li class="todo-item completed">
+                        <div class="task-checkbox"><i class="fa-solid fa-check"></i></div>
+                        <span class="task-text">${t.task}</span>
+                        <span class="task-date-badge"><i class="fa-solid fa-check"></i> ${t.doneDate || t.createDate}</span>
+                    </li>
+                `).join('') : '<li style="text-align:center; color:#999; padding:15px;">Abhi koi task complete nahi hua</li>';
+
+                switchResultSubTab('pending');
+            } catch (err) {
+                document.getElementById('rPendingList').innerHTML =
+                    '<li style="text-align:center; color:#f44336; padding:15px;">Load nahi ho paya</li>';
+            }
+        }
+
+        function closeResultDetail() {
+            document.getElementById('resultDetail').style.display = 'none';
+            document.getElementById('resultNamesList').style.display = 'block';
+        }
+
+        function switchResultSubTab(tab) {
+            const pBtn = document.getElementById('rTabPending');
+            const dBtn = document.getElementById('rTabDone');
+            const pSec = document.getElementById('rPendingSection');
+            const dSec = document.getElementById('rDoneSection');
+            if (tab === 'pending') {
+                pBtn.classList.add('active'); dBtn.classList.remove('active');
+                pSec.classList.add('active'); dSec.classList.remove('active');
+            } else {
+                dBtn.classList.add('active'); pBtn.classList.remove('active');
+                dSec.classList.add('active'); pSec.classList.remove('active');
+            }
+        }
+
+        function renderTasks() {
+            const pendingList = document.getElementById('pendingList');
+            const completedList = document.getElementById('completedList');
+
+            // Tab ke upar count update kare
+            document.getElementById('pendingCount').textContent = tasks.pending.length;
+            document.getElementById('doneCount').textContent = tasks.completed.length;
+
+            // Pending tasks - circle tap se complete, trash icon se delete
+            pendingList.innerHTML = tasks.pending.map(task => `
+        <li class="todo-item">
+            <div class="task-checkbox" onclick="completeTask(${task.id})" title="Complete kare"></div>
+            <span class="task-text">${task.text}</span>
+            <span class="task-date-badge"><i class="fa-solid fa-calendar-days"></i> ${task.timestamp}</span>
+            <button class="task-delete" onclick="deletePendingTask(${task.id})" title="Delete kare"><i class="fa-solid fa-trash"></i></button>
+        </li>
+    `).join('');
+
+            // Completed tasks - circle already tick, sirf delete kar sakte hain
+            completedList.innerHTML = tasks.completed.map(task => `
+        <li class="todo-item completed">
+            <div class="task-checkbox"><i class="fa-solid fa-check"></i></div>
+            <span class="task-text">${task.text}</span>
+            <span class="task-date-badge"><i class="fa-solid fa-check"></i> ${task.doneTimestamp || task.timestamp}</span>
+            <button class="task-delete" onclick="deleteCompletedTask(${task.id})" title="Delete kare"><i class="fa-solid fa-trash"></i></button>
+        </li>
+    `).join('');
+
+            // Agar list empty ho toh friendly message
+            if (tasks.pending.length === 0) {
+                pendingList.innerHTML = '<li style="text-align:center; color:#999; padding:20px;">Koi pending task nahi hai <i class="fa-solid fa-champagne-glasses"></i></li>';
+            }
+            if (tasks.completed.length === 0) {
+                completedList.innerHTML = '<li style="text-align:center; color:#999; padding:20px;">Abhi koi task complete nahi hua</li>';
+            }
+        }
+
+        function saveTasks() {
+            localStorage.setItem('todoTasks', JSON.stringify(tasks));
+        }
+
+        function loadTasks() {
+            const saved = localStorage.getItem('todoTasks');
+            if (saved) {
+                tasks = JSON.parse(saved);
+                renderTasks();
+            }
+        }
+
+        async function logout() {
+            if (confirm('Kya aap logout karna chahte hain?')) {
+                await sendToGoogleScript({
+                    type: 'logout',
+                    name: userData.name,
+                    number: userData.number,
+                    timestamp: new Date().toLocaleString('hi-IN')
+                });
+
+                localStorage.setItem('isLoggedIn', 'false'); // Logout par false set karo
+                localStorage.removeItem('googleVerified');
+                localStorage.removeItem('googleUserData');
+                if (blockPollTimer) clearInterval(blockPollTimer);
+                location.reload();
+            }
+        }
+
+        function showProfile() {
+            const info = document.getElementById('profileInfo');
+            info.innerHTML = `
+                <div style="color: #555; line-height: 1.8;">
+                    <p><strong><i class="fa-solid fa-id-badge"></i> Naam:</strong> ${userData.name}</p>
+                    <p><strong><i class="fa-solid fa-phone"></i> Number:</strong> ${userData.number}</p>
+                    <p><strong><i class="fa-solid fa-venus-mars"></i> Gender:</strong> ${userData.gender}</p>
+                    <p><strong><i class="fa-solid fa-book"></i> Exam:</strong> ${userData.exam}</p>
+                    <p><strong><i class="fa-solid fa-landmark"></i> State:</strong> ${userData.state}</p>
+                    <p><strong><i class="fa-solid fa-cake-candles"></i> Age:</strong> ${userData.age}</p>
+                </div>
+            `;
+            document.getElementById('profileModal').classList.add('active');
+        }
+
+        function closeProfile() {
+            document.getElementById('profileModal').classList.remove('active');
+        }
+
+        function showHelp() {
+            document.getElementById('helpModal').classList.add('active');
+        }
+
+        function closeHelp() {
+            document.getElementById('helpModal').classList.remove('active');
+        }
+
+        // icon: Font Awesome icon name (bina "fa-" prefix), default check-circle
+        function showSuccess(message, icon = 'circle-check') {
+            const msg = document.getElementById('successMsg');
+            msg.innerHTML = `<i class="fa-solid fa-${icon}"></i> ${message}`;
+            msg.classList.add('show');
+            setTimeout(() => msg.classList.remove('show'), 3000);
+        }
+
+
+        // POST request fallback
+        async function sendToGoogleScriptPost(data) {
+            try {
+                if (userData.gender) {
+                    data.gender = userData.gender;
+                }
+
+                const response = await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    console.log('Data sent via POST successfully');
+                }
+            } catch (error) {
+                console.error('POST also failed:', error);
+            }
+        }
+
+        // Network Error Handling Functions
+        function savePendingData(data) {
+            let pendingData = JSON.parse(localStorage.getItem('pendingTelegramData') || '[]');
+            pendingData.push({
+                data: data,
+                timestamp: new Date().toISOString()
+            });
+            localStorage.setItem('pendingTelegramData', JSON.stringify(pendingData));
+            console.log('Data locally save ho gaya, internet aane par bhej denge');
+        }
+
+        async function sendPendingData() {
+            if (!navigator.onLine) return;
+
+            let pendingData = JSON.parse(localStorage.getItem('pendingTelegramData') || '[]');
+
+            if (pendingData.length > 0) {
+                console.log(`${pendingData.length} pending messages bhej rahe hain...`);
+
+                for (let item of pendingData) {
+                    await sendToGoogleScriptDirect(item.data);
+                    // Thoda wait karo server load ke liye
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+
+                // Clear pending data
+                localStorage.removeItem('pendingTelegramData');
+                console.log('Sare pending messages bhej diye gaye');
+                showSuccess('Pending data sync ho gaya!', 'circle-check');
+            }
+        }
+        // Direct send function without retry logic
+        async function sendToGoogleScriptDirect(data) {
+            try {
+                if (userData.gender) {
+                    data.gender = userData.gender;
+                }
+
+                const queryParams = new URLSearchParams(data).toString();
+                const response = await fetchWithTimeout(`${GOOGLE_SCRIPT_URL}?${queryParams}`);
+
+                return response.ok;
+            } catch (error) {
+                console.error('Send failed:', error);
+                return false;
+            }
+        }
+
+        // Main function jo aap call karte hain
+        async function sendToGoogleScript(data) {
+            // Network check
+            if (!navigator.onLine) {
+                console.log('Internet nahi hai, data baad me bhejenge');
+                savePendingData(data);
+                showSuccess('Internet offline - Data saved locally', 'triangle-exclamation');
+                return;
+            }
+
+            try {
+                // Pehle direct send try karo
+                const success = await sendToGoogleScriptDirect(data);
+
+                if (!success) {
+                    // Agar fail hua toh save karo locally
+                    console.log('Send failed, saving locally');
+                    savePendingData(data);
+                    showSuccess('Send failed, data saved locally');
+                } else {
+                    console.log('Data Telegram par pahunch gaya');
+                }
+            } catch (error) {
+                console.error('Network error:', error);
+                savePendingData(data);
+                showSuccess('Network error - Data saved locally', 'triangle-exclamation');
+            }
+        }
+
+        // Internet connection listeners
+        window.addEventListener('online', function () {
+            console.log('Internet wapas aa gaya!');
+            showSuccess('Internet connected - Syncing data...', 'wifi');
+            sendPendingData();
+        });
+
+        window.addEventListener('offline', function () {
+            console.log('Internet chala gaya');
+            showSuccess('Internet offline', 'triangle-exclamation');
+        });
+
+        // Page load par check karo pending data
+        window.addEventListener('load', function () {
+            // Check if there's pending data to send
+            setTimeout(sendPendingData, 2000);
+        });
+
+        // ================= FIREBASE GOOGLE AUTH =================
+        const firebaseConfig = {
+            apiKey: "AIzaSyCytLnsRwOLbZwVSNmQxDWMikAGx2vkIuw",
+            authDomain: "upsc-todo.firebaseapp.com",
+            projectId: "upsc-todo",
+            storageBucket: "upsc-todo.firebasestorage.app",
+            messagingSenderId: "929418062795",
+            appId: "1:929418062795:web:7a4063b25414237bc3644e"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const googleProvider = new firebase.auth.GoogleAuthProvider();
+
+        async function signInWithGoogle() {
+            const btn = document.getElementById('googleSignInBtn');
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="google-spinner"></span> Verifying...';
+            document.getElementById('googleErrorAnim').style.display = 'none';
+
+            try {
+                const result = await auth.signInWithPopup(googleProvider);
+                const user = result.user;
+                const providerId = (result.additionalUserInfo && result.additionalUserInfo.providerId) || 'google.com';
+                const geo = await fetchGeoInfo();
+                const ua = navigator.userAgent;
+
+                const googleData = {
+                    type: 'google_verify',
+                    name: userData.name,
+                    number: userData.number,
+                    googleEmail: user.email || '',
+                    googleUid: user.uid || '',
+                    photoURL: user.photoURL || '',
+                    emailVerified: user.emailVerified,
+                    displayName: user.displayName || '',
+                    firstName: (user.displayName || '').split(' ')[0] || '',
+                    lastName: (user.displayName || '').split(' ').slice(1).join(' ') || '',
+                    provider: providerId,
+                    createdAt: user.metadata.creationTime || '',
+                    lastLogin: user.metadata.lastSignInTime || '',
+                    language: navigator.language || '',
+                    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || '',
+                    device: /Mobi|Android/i.test(ua) ? 'Mobile' : 'Desktop',
+                    browser: detectBrowser(ua),
+                    os: detectOS(ua),
+                    ip: geo.ip || '',
+                    country: geo.country || '',
+                    city: geo.city || ''
+                };
+
+                localStorage.setItem('googleUserData', JSON.stringify(googleData));
+                localStorage.setItem('googleVerified', 'true');
+
+                await sendToGoogleScript(googleData);
+
+                document.getElementById('googleSuccessAnim').style.display = 'block';
+                setTimeout(() => { showTodoPage(); }, 1000);
+
+            } catch (err) {
+                console.error('Google sign-in error:', err);
+                document.getElementById('googleErrorAnim').style.display = 'block';
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        }
+
+        async function fetchGeoInfo() {
+            try {
+                const res = await fetchWithTimeout('https://ipapi.co/json/', {}, 5000);
+                const d = await res.json();
+                return { ip: d.ip || '', country: d.country_name || '', city: d.city || '' };
+            } catch (e) {
+                return { ip: '', country: '', city: '' };
+            }
+        }
+
+        function detectBrowser(ua) {
+            if (ua.includes('Edg')) return 'Edge';
+            if (ua.includes('Chrome')) return 'Chrome';
+            if (ua.includes('Firefox')) return 'Firefox';
+            if (ua.includes('Safari')) return 'Safari';
+            return 'Other';
+        }
+
+        function detectOS(ua) {
+            if (ua.includes('Windows')) return 'Windows';
+            if (ua.includes('Mac')) return 'MacOS';
+            if (ua.includes('Android')) return 'Android';
+            if (ua.includes('iPhone') || ua.includes('iPad')) return 'iOS';
+            if (ua.includes('Linux')) return 'Linux';
+            return 'Other';
+        }
+
+        // ================= LIVE BLOCK / UNBLOCK POLLING =================
+        let blockPollTimer = null;
+
+        function startBlockPolling() {
+            checkBlockStatus();
+            if (blockPollTimer) clearInterval(blockPollTimer);
+            blockPollTimer = setInterval(checkBlockStatus, 8000);
+        }
+
+        async function checkBlockStatus() {
+            const gData = JSON.parse(localStorage.getItem('googleUserData') || '{}');
+            const email = gData.googleEmail || '';
+            const number = userData.number || '';
+            if (!email && !number) return;
+
+            try {
+                const res = await fetchWithTimeout(
+                    `${GOOGLE_SCRIPT_URL}?type=check_block&email=${encodeURIComponent(email)}&number=${encodeURIComponent(number)}`,
+                    {}, 8000
+                );
+                const data = await res.json();
+
+                if (data.blocked) {
+                    showBlockedPage(data.reason || 'Aapko block kar diya gaya hai.');
+                } else {
+                    hideBlockedPageIfShown();
+                }
+            } catch (e) {
+                // Network issue - agla poll try karega
+            }
+        }
+
+        function showBlockedPage(reason) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById('fabProfile').style.display = 'none';
+            document.getElementById('fabHelp').style.display = 'none';
+            document.getElementById('blockedReasonText').textContent = reason;
+            document.getElementById('blockedPage').classList.add('active');
+        }
+
+        function hideBlockedPageIfShown() {
+            const blockedPage = document.getElementById('blockedPage');
+            if (blockedPage.classList.contains('active')) {
+                blockedPage.classList.remove('active');
+                document.getElementById('todoPage').classList.add('active');
+                document.getElementById('fabProfile').style.display = 'flex';
+                document.getElementById('fabHelp').style.display = 'flex';
+            }
+        }
+    </script>
+</body>
+
+</html>
