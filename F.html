@@ -321,8 +321,7 @@
 
         /* 📅 Date/time badge - add aur done dono par dikhega */
         .task-date-badge {
-            flex-shrink: 1;
-            flex-basis: 100%;
+            flex-shrink: 0;
             order: 4;
             background: #fff4e5;
             color: #b8650b;
@@ -331,10 +330,8 @@
             font-size: 11px;
             font-weight: bold;
             white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 100%;
             box-sizing: border-box;
+            margin-left: auto;
         }
 
         .todo-item.completed .task-date-badge {
@@ -827,14 +824,9 @@
             }
 
             .task-date-badge {
-                order: 4;
-                flex-basis: 100%;
-                margin-left: 42px;
-                margin-top: 2px;
                 font-size: 10px;
                 padding: 3px 8px;
-                max-width: calc(100% - 42px);
-                box-sizing: border-box;
+                margin-left: auto;
             }
 
             /* Result toolbar - search aur sort ek line me fit ho */
